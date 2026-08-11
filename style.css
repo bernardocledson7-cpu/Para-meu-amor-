@@ -1,0 +1,894 @@
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let W = 0;
+let H = 0;
+let cx = 0;
+let cy = 0;
+
+let rotation = 0;
+let velocity = 0.002;
+
+let dragging = false;
+let lastX = 0;
+let lastY = 0;
+
+const stars = [];
+const STAR_COUNT = 5000;
+
+
+/* =========================
+   TAMANHO DA TELA
+========================= */
+
+function resize() {
+
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+
+    cx = W / 2;
+    cy = H / 2;
+
+    createGalaxy();
+}
+
+window.addEventListener("resize", resize);
+
+
+/* =========================
+   CRIAR A GALÁXIA
+========================= */
+
+function createGalaxy() {
+
+    stars.length = 0;
+
+    const maxRadius =
+        Math.min(W, H) * 0.48;
+
+    for (let i = 0; i < STAR_COUNT; i++) {
+
+        /*
+         * Distância do centro.
+         * Muitas estrelas ficam próximas
+         * do núcleo.
+         */
+
+        const radius =
+            Math.pow(Math.random(), 1.7) *
+            maxRadius;
+
+
+        /*
+         * Cinco braços principais.
+         */
+
+        const arm =
+            Math.floor(
+                Math.random() * 5
+            );
+
+
+        /*
+         * Ângulo base do braço.
+         */
+
+        const armAngle =
+            arm *
+            (Math.PI * 2 / 5);
+
+
+        /*
+         * Curvatura da espiral.
+         */
+
+        const curve =
+            radius * 0.018;
+
+
+        /*
+         * Espalhamento das estrelas
+         * em volta do braço.
+         */
+
+        const spread =
+            (Math.random() - 0.5) *
+            (0.45 + radius / maxRadius);
+
+
+        const angle =
+            armAngle +
+            curve +
+            spread;
+
+
+        /*
+         * Formato achatado da galáxia.
+         */
+
+        const flatten =
+            0.34 +
+            Math.random() * 0.12;
+
+
+        const x =
+            Math.cos(angle) *
+            radius;
+
+
+        const y =
+            Math.sin(angle) *
+            radius *
+            flatten;
+
+
+        stars.push({
+
+            x,
+            y,
+
+            radius,
+
+            angle,
+
+            size:
+                Math.random() < 0.92
+                ? Math.random() * 1.4 + 0.3
+                : Math.random() * 3 + 1,
+
+            alpha:
+                Math.random() * 0.75 + 0.25,
+
+            twinkle:
+                Math.random() * Math.PI * 2,
+
+            speed:
+                0.0004 +
+                Math.random() * 0.0015
+
+        });
+    }
+}
+
+
+/* =========================
+   DESENHAR FUNDO
+========================= */
+
+function background() {
+
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    /*
+     * Brilho rosa muito suave
+     * atrás da galáxia.
+     */
+
+    const glow =
+        ctx.createRadialGradient(
+            cx,
+            cy,
+            0,
+            cx,
+            cy,
+            Math.min(W, H) * 0.52
+        );
+
+
+    glow.addColorStop(
+        0,
+        "rgba(255,20,147,0.18)"
+    );
+
+    glow.addColorStop(
+        0.35,
+        "rgba(180,0,100,0.07)"
+    );
+
+    glow.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+
+    ctx.fillStyle = glow;
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+}
+
+
+/* =========================
+   DESENHAR ESTRELAS
+========================= */
+
+function drawStars(time) {
+
+    const cosR = Math.cos(rotation);
+    const sinR = Math.sin(rotation);
+
+    for (const star of stars) {
+
+        /*
+         * Pequena rotação individual.
+         */
+
+        const localAngle =
+            star.angle +
+            rotation +
+            star.radius * 0.00002;
+
+        const x =
+            Math.cos(localAngle) *
+            star.radius;
+
+        const y =
+            Math.sin(localAngle) *
+            star.radius *
+            0.38;
+
+
+        const screenX =
+            cx + x;
+
+        const screenY =
+            cy + y;
+
+
+        /*
+         * Brilho pulsante.
+         */
+
+        const pulse =
+            0.75 +
+            Math.sin(
+                time * 0.002 +
+                star.twinkle
+            ) * 0.25;
+
+
+        /*
+         * Cores variando entre branco,
+         * rosa e magenta.
+         */
+
+        let r = 255;
+        let g;
+        let b;
+
+        const colorType =
+            star.radius % 3;
+
+
+        if (colorType < 1) {
+
+            g = 210;
+            b = 245;
+
+        } else if (colorType < 2) {
+
+            g = 80;
+            b = 190;
+
+        } else {
+
+            g = 150;
+            b = 220;
+        }
+
+
+        ctx.beginPath();
+
+        ctx.fillStyle =
+            `rgba(
+                ${r},
+                ${g},
+                ${b},
+                ${star.alpha * pulse}
+            )`;
+
+
+        ctx.arc(
+            screenX,
+            screenY,
+            star.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+
+        /*
+         * Algumas estrelas ganham
+         * um pequeno brilho.
+         */
+
+        if (star.size > 2.2) {
+
+            ctx.beginPath();
+
+            ctx.fillStyle =
+                `rgba(
+                    255,
+                    120,
+                    210,
+                    ${star.alpha * 0.12}
+                )`;
+
+            ctx.arc(
+                screenX,
+                screenY,
+                star.size * 4,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+        }
+    }
+}
+
+
+/* =========================
+   NÚCLEO DA GALÁXIA
+========================= */
+
+function drawCore() {
+
+    const radius =
+        Math.min(W, H) * 0.19;
+
+
+    const core =
+        ctx.createRadialGradient(
+            cx,
+            cy,
+            0,
+            cx,
+            cy,
+            radius
+        );
+
+
+    core.addColorStop(
+        0,
+        "rgba(255,255,255,1)"
+    );
+
+    core.addColorStop(
+        0.03,
+        "rgba(255,220,245,1)"
+    );
+
+    core.addColorStop(
+        0.08,
+        "rgba(255,90,190,0.95)"
+    );
+
+    core.addColorStop(
+        0.25,
+        "rgba(255,20,147,0.55)"
+    );
+
+    core.addColorStop(
+        0.55,
+        "rgba(180,0,100,0.18)"
+    );
+
+    core.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+
+    ctx.fillStyle = core;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    /*
+     * Núcleo branco/rosa.
+     */
+
+    const inner =
+        Math.min(W, H) * 0.045;
+
+
+    const innerGlow =
+        ctx.createRadialGradient(
+            cx,
+            cy,
+            0,
+            cx,
+            cy,
+            inner
+        );
+
+
+    innerGlow.addColorStop(
+        0,
+        "#ffffff"
+    );
+
+    innerGlow.addColorStop(
+        0.25,
+        "#ffb6df"
+    );
+
+    innerGlow.addColorStop(
+        0.65,
+        "#ff1493"
+    );
+
+    innerGlow.addColorStop(
+        1,
+        "rgba(255,20,147,0)"
+    );
+
+
+    ctx.fillStyle =
+        innerGlow;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        cx,
+        cy,
+        inner,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+/* =========================
+   BRAÇOS DE LUZ
+========================= */
+
+function drawSpiralGlow() {
+
+    ctx.save();
+
+    ctx.translate(
+        cx,
+        cy
+    );
+
+    ctx.rotate(rotation);
+
+
+    for (
+        let arm = 0;
+        arm < 5;
+        arm++
+    ) {
+
+        ctx.beginPath();
+
+        for (
+            let r = 15;
+            r < Math.min(W, H) * 0.46;
+            r += 3
+        ) {
+
+            const angle =
+                arm *
+                (Math.PI * 2 / 5) +
+                r * 0.018;
+
+
+            const x =
+                Math.cos(angle) * r;
+
+            const y =
+                Math.sin(angle) *
+                r *
+                0.38;
+
+
+            if (r === 15) {
+
+                ctx.moveTo(
+                    x,
+                    y
+                );
+
+            } else {
+
+                ctx.lineTo(
+                    x,
+                    y
+                );
+            }
+        }
+
+
+        ctx.strokeStyle =
+            "rgba(255,70,180,0.035)";
+
+        ctx.lineWidth = 10;
+
+        ctx.shadowColor =
+            "#ff1493";
+
+        ctx.shadowBlur = 25;
+
+        ctx.stroke();
+    }
+
+
+    ctx.restore();
+}
+
+
+/* =========================
+   CORAÇÃO NO CENTRO
+========================= */
+
+function drawHeart(time) {
+
+    const size =
+        Math.min(W, H) * 0.035;
+
+
+    const scale =
+        1 +
+        Math.sin(time * 0.004) *
+        0.08;
+
+
+    ctx.save();
+
+    ctx.translate(
+        cx,
+        cy
+    );
+
+    ctx.scale(
+        scale,
+        scale
+    );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        0,
+        size * 0.8
+    );
+
+    ctx.bezierCurveTo(
+        -size * 1.8,
+        -size * 0.4,
+        -size * 1.2,
+        -size * 1.5,
+        0,
+        -size * 0.7
+    );
+
+    ctx.bezierCurveTo(
+        size * 1.2,
+        -size * 1.5,
+        size * 1.8,
+        -size * 0.4,
+        0,
+        size * 0.8
+    );
+
+
+    ctx.fillStyle =
+        "#ff1493";
+
+    ctx.shadowColor =
+        "#ff1493";
+
+    ctx.shadowBlur = 25;
+
+    ctx.fill();
+
+
+    ctx.restore();
+}
+
+
+/* =========================
+   ANIMAÇÃO
+========================= */
+
+function animate(time) {
+
+    background();
+
+    drawSpiralGlow();
+
+    drawStars(time);
+
+    drawCore();
+
+    drawHeart(time);
+
+
+    /*
+     * Inércia depois que o dedo
+     * para de arrastar.
+     */
+
+    if (!dragging) {
+
+        rotation += velocity;
+
+        velocity *= 0.97;
+
+        if (
+            Math.abs(velocity) <
+            0.0003
+        ) {
+
+            velocity =
+                0.0008;
+
+        }
+    }
+
+
+    requestAnimationFrame(
+        animate
+    );
+}
+
+
+/* =========================
+   TOQUE
+========================= */
+
+canvas.addEventListener(
+    "pointerdown",
+    event => {
+
+        dragging = true;
+
+        lastX =
+            event.clientX;
+
+        lastY =
+            event.clientY;
+
+        velocity = 0;
+
+        canvas.setPointerCapture(
+            event.pointerId
+        );
+    }
+);
+
+
+canvas.addEventListener(
+    "pointermove",
+    event => {
+
+        if (!dragging) {
+            return;
+        }
+
+
+        const dx =
+            event.clientX -
+            lastX;
+
+
+        const dy =
+            event.clientY -
+            lastY;
+
+
+        /*
+         * Movimento horizontal
+         * controla a rotação.
+         */
+
+        rotation +=
+            dx * 0.012;
+
+
+        velocity =
+            dx * 0.003;
+
+
+        lastX =
+            event.clientX;
+
+        lastY =
+            event.clientY;
+    }
+);
+
+
+canvas.addEventListener(
+    "pointerup",
+    event => {
+
+        dragging = false;
+
+        canvas.releasePointerCapture(
+            event.pointerId
+        );
+    }
+);
+
+
+canvas.addEventListener(
+    "pointercancel",
+    () => {
+
+        dragging = false;
+
+    }
+);
+
+
+/* =========================
+   ENTRAR
+========================= */
+
+function entrar() {
+
+    const inicio =
+        document.getElementById(
+            "inicio"
+        );
+
+
+    inicio.style.opacity =
+        "0";
+
+
+    setTimeout(
+        () => {
+
+            inicio.style.display =
+                "none";
+
+        },
+        1000
+    );
+}
+
+
+/* =========================
+   CORAÇÕES
+========================= */
+
+function criarCoracao() {
+
+    const heart =
+        document.createElement(
+            "div"
+        );
+
+
+    heart.textContent =
+        Math.random() > 0.5
+        ? "❤️"
+        : "💗";
+
+
+    heart.style.position =
+        "fixed";
+
+    heart.style.left =
+        Math.random() * 100 +
+        "vw";
+
+    heart.style.bottom =
+        "-30px";
+
+    heart.style.fontSize =
+        15 +
+        Math.random() * 30 +
+        "px";
+
+    heart.style.zIndex =
+        "50";
+
+    heart.style.pointerEvents =
+        "none";
+
+    heart.style.filter =
+        "drop-shadow(0 0 10px #ff1493)";
+
+
+    document.body.appendChild(
+        heart
+    );
+
+
+    const duration =
+        4 +
+        Math.random() * 3;
+
+
+    heart.animate(
+        [
+            {
+                transform:
+                    "translateY(0) scale(1)",
+                opacity: 1
+            },
+
+            {
+                transform:
+                    `translateY(-110vh)
+                     rotate(${Math.random() * 360}deg)
+                     scale(0.5)`,
+                opacity: 0
+            }
+        ],
+        {
+            duration:
+                duration * 1000,
+
+            easing:
+                "linear"
+        }
+    );
+
+
+    setTimeout(
+        () => heart.remove(),
+        duration * 1000
+    );
+}
+
+
+/* =========================
+   EXPLOSÃO
+========================= */
+
+function explodirCoracoes() {
+
+    for (
+        let i = 0;
+        i < 50;
+        i++
+    ) {
+
+        setTimeout(
+            criarCoracao,
+            i * 35
+        );
+    }
+}
+
+
+/* =========================
+   INICIAR
+========================= */
+
+resize();
+
+animate(0);
